@@ -9,15 +9,19 @@ const int M2 = 12;///<Motor2 Direction
 const int M3 = 8; ///<Motor3 Direction
 const int M4 = 7; ///<Motor4 Direction
 
-int x = 0; int y = 0; int z = 0;
+
+
+int pos_v1 = 0;
+int pos_v2 = 0;
+int pump_pwr = 0;
 
 
 volatile int flow_frequency2, flow_frequency3, flow_frequency18, flow_frequency19 ; // Measures flow sensor pulses
 unsigned int l_hour2, l_hour3, l_hour18, l_hour19; // Calculated litres/hour
-const byte flowsensor2  =  2;  // Sensor Input 1
+const byte flowsensor2  =  30;  // Sensor Input 1
 const byte flowsensor3  =  3;  // Sensor Input 2
-const byte flowsensor18 = 18;  // Sensor Input 3
-const byte flowsensor19 = 19;  // Sensor Input 4
+const byte flowsensor18 = 20;  // Sensor Input 3
+const byte flowsensor19 = 21;  // Sensor Input 4
 unsigned long currentTime;
 unsigned long cloopTime;
 void flow2 () // Interrupt function
@@ -56,21 +60,26 @@ void set_valve(int i = 0, int x = 0)
 
 void ctrl_pump(int ch = 0, int val = 0)
 {
-  int max_pwr = 600;
+  if(pos_v1 < 20 && pos_v2 < 20)
+
+  val = 0;
+  
+  int max_per = 60;
   if(val < 0) val = 0;
-  else if(val > max_pwr) val = max_pwr;
+  else if(val > max_per) val = max_per;
+  int v = map(val, 0, 100, 0, 1000);
 
   if (ch==1)
   {
     Serial1.print("!G 1 ");
-    Serial1.print(String(val));
+    Serial1.print(String(v));
     Serial1.print("_\r");
   }
 
   if (ch==2)
   {
     Serial1.print("!G 2 ");
-    Serial1.print(String(val));
+    Serial1.print(String(v));
     Serial1.print("_\r");
   }
 }
@@ -97,11 +106,12 @@ void setup()
     pinMode(i,OUTPUT);
   for(int i=11;i<13;i++)
     pinMode(i,OUTPUT);
-  
-  set_valve(1,0);
-  set_valve(2,0);
-  set_valve(3,0);
-  set_valve(4,0);
+
+  int x = 00;
+  set_valve(1,x);
+  set_valve(2,x);
+  set_valve(3,x);
+  set_valve(4,x);
   
 }
 
@@ -110,14 +120,39 @@ void loop ()
 
   if (Serial.available())
   {
-      x = Serial.parseInt();
-      y = Serial.parseInt();
-      z = Serial.parseInt();
-      set_valve(x, y);
+      int x = Serial.parseInt();
+      int y = Serial.parseInt();
+      int z = Serial.parseInt();
+
+      if (x == 1)
+      {
+        pos_v1 = y;
+        set_valve(1, pos_v1);
+      }
+      if (x == 2)
+      {
+        pos_v2 = y;
+        set_valve(2, pos_v2);
+      }
+
+      
+
+      pump_pwr = z;
+      //if(pos_v1 < 20 && pos_v2 < 20)
+      //pump_pwr = 0;
+      
+      
+      
 
   }
+  
+  
 
-  ctrl_pump(1, z);
+  
+  ctrl_pump(1, pump_pwr);
+
+
+
 
   currentTime = millis();
   // Every second, calculate and print litres/hour
@@ -125,25 +160,32 @@ void loop ()
   {
     cloopTime = currentTime; // Updates cloopTime
     // Pulse frequency (Hz) = 23Q, Q is flow rate in L/min.
-   
+
+  /* 
     l_hour2 = ((flow_frequency2 * 60 / 23) * 1.1); // (Pulse frequency x 60 min) / 23Q = flowrate in L/hour
     flow_frequency2 = 0; // Reset Counter
-    //Serial.print(l_hour2, DEC); // Print litres/hour
-    //Serial.println(" L/hour 2 ");
+    Serial.print(l_hour2, DEC); // Print litres/hour
+    Serial.println(" L/hour 2 ");
 
     l_hour3 = ((flow_frequency3 * 60 / 23) * 1.1); // (Pulse frequency x 60 min) / 23Q = flowrate in L/hour
     flow_frequency3 = 0; // Reset Counter
-    //Serial.print(l_hour3, DEC); // Print litres/hour
-    //Serial.println(" L/hour 3 ");
-
+    Serial.print(l_hour3, DEC); // Print litres/hour
+    Serial.println(" L/hour 3 ");
+  */
     l_hour18 = ((flow_frequency18 * 60 / 23) * 1.1); // (Pulse frequency x 60 min) / 23Q = flowrate in L/hour
     flow_frequency18 = 0; // Reset Counter
-    //Serial.print(l_hour18, DEC); // Print litres/hour
-    //Serial.println(" L/hour 18 ");
+    Serial.print(l_hour18, DEC); // Print litres/hour
+    Serial.println(" L/hour #1 ");
 
     l_hour19 = ((flow_frequency19 * 60 / 23) * 1.1); // (Pulse frequency x 60 min) / 23Q = flowrate in L/hour
     flow_frequency19 = 0; // Reset Counter
     Serial.print(l_hour19, DEC); // Print litres/hour
-    Serial.println(" L/hour 19 ");
+    Serial.println(" L/hour #2 ");
+
+    Serial.print(pos_v1); Serial.print("\t"); Serial.print(pos_v2); Serial.print("\t"); Serial.print(pump_pwr);
+
+    
+    Serial.println();
+    Serial.println();
   }
 }
