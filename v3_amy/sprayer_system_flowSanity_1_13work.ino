@@ -25,14 +25,6 @@ const int slaveSelectEnc2 = 41;
 const int slaveSelectEnc3 = 42;
 const int slaveSelectEnc4 = 43;
 
-const int pulsePin = 39; 
-/*
-const int slaveSelectEnc1 = 8;
-const int slaveSelectEnc2 = 7;
-const int slaveSelectEnc3 = 6;
-const int slaveSelectEnc4 = 5;
-*/
-
 // Pump control variables
 float pump_pwr[2] = { 0.0, 0.0 };             // Pump Power Value that gets passed into the PUMPS
 float valve_pos[4] = { 0.0, 0.0, 0.0, 0.0 };  // Valve position for each valve
@@ -79,17 +71,6 @@ void initEncoder() {
     SPI.transfer(0x00);
     digitalWrite(slaveSelect, HIGH);
   }
-  /*
-  for (int i = 1; i <= 4; i++) {
-  int slaveSelect = (i == 1) ? slaveSelectEnc1 : (i == 2) ? slaveSelectEnc2 : (i == 3) ? slaveSelectEnc3 : slaveSelectEnc4;
-  digitalWrite(slaveSelect, LOW);
-  SPI.transfer(0x70); // Read MDR0 register command
-  byte status = SPI.transfer(0x00); // Read response
-  digitalWrite(slaveSelect, HIGH);
-  Serial.print("Encoder "); Serial.print(i); Serial.print(" status: ");
-  Serial.println(status, HEX); // Print the status byte to check if it's correct
-  }
-  */
 }
 
 // Function to count pulses from each flow sensor
@@ -215,57 +196,6 @@ void debug_disp() {
   Serial.println();
 }
 
-/*
-void get_flow_rates() {
-  long currentCount_1 = readEncoder(1);
-  long currentCount_2 = readEncoder(2);
-  long currentCount_3 = readEncoder(3);
-  long currentCount_4 = readEncoder(4);
-  
-  unsigned long currentTime = millis();
-  unsigned long timeInterval = currentTime - lastTime;
-  
-  if (timeInterval >= 1000) {
-    long pulses_1 = currentCount_1 - lastCount_1;
-    long pulses_2 = currentCount_2 - lastCount_2;
-    long pulses_3 = currentCount_3 - lastCount_3;
-    long pulses_4 = currentCount_4 - lastCount_4;
-
-    pulses[0] = pulses_1;
-    pulses[1] = pulses_2;
-    pulses[2] = pulses_3;
-    pulses[3] = pulses_4;
-
-    float flowfrequency1 = (float)pulses_1 / (timeInterval / 1000.0);
-    float flowfrequency2 = (float)pulses_2 / (timeInterval / 1000.0);
-    float flowfrequency3 = (float)pulses_3 / (timeInterval / 1000.0);
-    float flowfrequency4 = (float)pulses_4 / (timeInterval / 1000.0);
-
-    flow_rate[0] = (flowfrequency1 * 60.0 / 7.5);
-    flow_rate[1] = (flowfrequency2 * 60.0 / 7.5);
-    flow_rate[2] = (flowfrequency3 * 60.0 / 7.5);
-    flow_rate[3] = (flowfrequency4 * 60.0 / 7.5);
-
-    // Debug output
-    debug_disp();
-
-    // Reset Counters
-    flowfrequency1 = 0;
-    flowfrequency2 = 0;
-    flowfrequency3 = 0;
-    flowfrequency4 = 0;
-
-    // Update for the next interval
-    lastCount_1 = currentCount_1;
-    lastCount_2 = currentCount_2;
-    lastCount_3 = currentCount_3;
-    lastCount_4 = currentCount_4;
-    lastTime = currentTime;
-    //clearEncoderCount();
-  }
-}
-*/
-
 void get_flow_rates() {
   
   currentTime = millis();
@@ -338,8 +268,6 @@ void setup() {
   pinMode(M3, OUTPUT);
   pinMode(M4, OUTPUT);
 
-  pinMode(pulsePin, OUTPUT);
-
   set_valve(1, 0);
   set_valve(2, 0);
   set_valve(3, 0);
@@ -348,14 +276,6 @@ void setup() {
 
 void loop() {
   get_flow_rates();
-  
-  /*
-  digitalWrite(pulsePin, HIGH);
-  delayMicroseconds(500);
-  digitalWrite(pulsePin, LOW);
-  delayMicroseconds(500);
-  Serial.print("pulse sent\n");
-  */
   
   ctrl_pump(1, pump_pwr[0]);
   ctrl_pump(2, pump_pwr[1]);
