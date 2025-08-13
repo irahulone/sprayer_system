@@ -319,10 +319,10 @@ void get_flow_rates() {
     flow_rate[2] = Serial1.parseFloat();
     flow_rate[3] = Serial1.parseFloat();
 
-    pulses[0] = Serial1.parseInt();
-    pulses[1] = Serial1.parseInt();
-    pulses[2] = Serial1.parseInt();
-    pulses[3] = Serial1.parseInt();
+    //pulses[0] = Serial1.parseInt();
+    //pulses[1] = Serial1.parseInt();
+    //pulses[2] = Serial1.parseInt();
+    //pulses[3] = Serial1.parseInt();
   }
 }
 
@@ -637,15 +637,15 @@ void updatePumpPower() {
       pump_pwr[3] = 0;
   }
   else {
-    kp_pump[0] = 0.15; 
-    kp_pump[1] = 0.11; 
-    kp_pump[2] = 0.11; 
-    kp_pump[3] = 0.11;
+    kp_pump[0] = 0.07; 
+    kp_pump[1] = 0.07; 
+    kp_pump[2] = 0.07; 
+    kp_pump[3] = 0.07;
 
-    ki_pump[0] = 0.06;
-    ki_pump[1] = 0.06;
-    ki_pump[2] = 0.06;
-    ki_pump[3] = 0.05; 
+    ki_pump[0] = 0.03;
+    ki_pump[1] = 0.03;
+    ki_pump[2] = 0.03;
+    ki_pump[3] = 0.03; 
 
     // Each nozzle has its own pump 
     for (int i = 0; i < 4; i++) {
@@ -843,7 +843,7 @@ void loop() {
     dfr_L = dfr[0] + dfr[1];
     dfr_R = dfr[2] + dfr[3];
   }
-
+  /*
   // --- Zone ID Input ---
   if (Serial.available())
   {
@@ -852,6 +852,7 @@ void loop() {
     if (xx != 0) zone_id = xx;
     //Serial.println(zone_id);
   }
+  */
 
   // --- Zero Flow Case ---
   if (dfr_L == 0 && dfr_R == 0) {
@@ -903,11 +904,11 @@ void loop() {
   }
   }
   else {
-    // for 1-to-1 system, keep valves at 80% open
-    valve_pos[0] = 80;
-    valve_pos[1] = 80;
-    valve_pos[2] = 80;
-    valve_pos[3] = 80;
+    // for 1-to-1 system, keep valves open
+    valve_pos[0] = 100;
+    valve_pos[1] = 100;
+    valve_pos[2] = 100;
+    valve_pos[3] = 100;
   }
  
 }
