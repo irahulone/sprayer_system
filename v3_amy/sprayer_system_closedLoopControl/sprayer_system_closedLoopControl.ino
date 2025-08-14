@@ -7,7 +7,8 @@
 #include "flow2_lookup_banked.h"
 #include "flow3_lookup_banked.h"
 #include "flow4_lookup_banked.h"
-
+#include <PacketSerial.h>
+COBSPacketSerial link;
 
 float lookUpTableFlow1[7] = {0.0, 55.01, 86.55, 116.75, 144.57, 172.91, 189.47};
 float lookUpTablePwr1[7] = {0.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0};
@@ -21,6 +22,8 @@ float lookUpTablePwr3[7] = {0.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0};
 float lookUpTableFlow4[7] = {0.0, 98.71, 124.63, 149.43, 170.70, 194.78, 208.57};
 float lookUpTablePwr4[7] = {0.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0};
 
+static float* lookUpTableFlowList[4] = {lookUpTableFlow1, lookUpTableFlow2, lookUpTableFlow3, lookUpTableFlow4}; 
+static float* lookUpTablePwrList[4] = {lookUpTablePwr1, lookUpTablePwr2, lookUpTablePwr3, lookUpTablePwr4};
 float* lookUpTableFlow;
 float* lookUpTablePwr;
 
@@ -41,6 +44,8 @@ bool isBanked = false;
 #define E3 5
 #define E4 6
 
+static size_t VALVE_PWM[4] = {M1,M2,M3,M4};
+static size_t VALVE_DIR_PINS[4] = {E1,E2,E3,E4};
 
 // Pump Control Variables
 float pump_pwr_uf[4] = { 0.0, 0.0, 0.0, 0.0 };          // unfiltered pump power 
@@ -98,27 +103,10 @@ void set_valve(int valve, int voltage) {
   digitalWrite(M2, HIGH);
   digitalWrite(M3, LOW);
   digitalWrite(M4, HIGH);
-
-  if (voltage < 0) voltage = 0;
-  if (voltage > 100) voltage = 100;
-
+  voltage = constrain(voltage, 0, 100);
   // Map the voltage range (0-10V) to the PWM range (0-255)
   int pwmValue = map(voltage, 0, 100, 0, 255);
-
-  // Set the motor driver to output the PWM signal for the specified valve
-  if (valve == 1) {
-    analogWrite(E1, pwmValue);
-    //Serial.print("Valve 1 set to voltage: ");
-  } else if (valve == 2) {
-    analogWrite(E2, pwmValue);
-    //Serial.print("Valve 2 set to voltage: ");
-  } else if (valve == 3) {
-    analogWrite(E3, pwmValue);
-    //Serial.print("Valve 3 set to voltage: ");
-  } else if (valve == 4) {
-    analogWrite(E4, pwmValue);
-    //Serial.print("Valve 4 set to voltage: ");
-  }
+  analogWrite(VALVE_DIR_PINS[valve-1],pwmValue);
 }
 
 /*
@@ -154,52 +142,20 @@ void ctrl_pump(int ch = 0, int val = 0) {
 }
 */
 void ctrl_pump(int ch = 0, int val = 0) {
-  int min_val_pos = 20;
-  int max_per = 60;
-  if (val < 0) val = 0;
-  else if (val > max_per) val = max_per;
+  if(ch < 1 || ch > 4) return;
+  const int min_val_pos = 20;
+  const int max_per = 60;
+  static HardwareSerial* const ports[4] = { &Serial2, &Serial2, &Serial3, &Serial3 };
+  static const int motors[4]            = { 1,        2,        1,        2        };
+  const size_t idx = ch-1;
+  val = constrain(val, 0, max_per);
   int v = map(val, 0, 100, 0, 1000);
-
-  if (ch == 1) {
-    if (valve_pos[0] < min_val_pos)
-      val = 0;
-  }
-  if (ch == 2) {
-    if (valve_pos[1] < min_val_pos)
-      val = 0;
-  }
-  if (ch == 3) {
-    if (valve_pos[2] < min_val_pos)
-      val = 0;
-  }
-  if (ch == 4) {
-    if (valve_pos[3] < min_val_pos)
-      val = 0;
-  }
-
-  if (ch == 1) {
-    Serial2.print("!G 1 ");
-    Serial2.print(String(v));
-    Serial2.print("_\r");
-  }
-
-  if (ch == 2) {
-    Serial2.print("!G 2 ");
-    Serial2.print(String(v));
-    Serial2.print("_\r");
-  }
-
-  if (ch == 3) {
-    Serial3.print("!G 1 ");
-    Serial3.print(String(v));
-    Serial3.print("_\r");
-  }
-
-  if (ch == 4) {
-    Serial3.print("!G 2 ");
-    Serial3.print(String(v));
-    Serial3.print("_\r");
-  }
+  val = valve_pos[idx] < min_val_pos ? 0 : val;
+  ports[idx]->print("!G ");
+  ports[idx]->print(motors[idx]);
+  ports[idx]->print(" ");
+  ports[idx]->print(v);
+  ports[idx]->print("_\r");
 }
 
 
@@ -211,10 +167,7 @@ void debug_disp()
 //  Serial.println();
   Serial.println();
   Serial.print("des"); Serial.print("\t");
-  Serial.print(dfr[0]); Serial.print("\t");
-  Serial.print(dfr[1]); Serial.print("\t");
-  Serial.print(dfr[2]); Serial.print("\t");
-  Serial.print(dfr[3]); Serial.print("\t");
+  for(float des : dfr) {Serial.print(des, 0); Serial.print("\t");}
   Serial.println();
   /*
   Serial.print("flo L/R bank"); Serial.print("\t");
@@ -223,57 +176,37 @@ void debug_disp()
   Serial.println();
   */
   Serial.print("vlv"); Serial.print("\t");
-  Serial.print(valve_pos[0],0); Serial.print("\t"); 
-  Serial.print(valve_pos[1],0); Serial.print("\t");
-  Serial.print(valve_pos[2],0); Serial.print("\t"); 
-  Serial.print(valve_pos[3],0); Serial.print("\t");
+  for(float vp : valve_pos) {Serial.print(vp, 0); Serial.print("\t");}
   Serial.println();
 
   Serial.print("flo"); Serial.print("\t");
-  Serial.print(flow_rate[0], 0); Serial.print("\t"); 
-  Serial.print(flow_rate[1], 0); Serial.print("\t");
-  Serial.print(flow_rate[2], 0); Serial.print("\t"); 
-  Serial.print(flow_rate[3], 0); Serial.print("\t");
+  for(float fr : flow_rate) {Serial.print(fr, 0); Serial.print("\t");}
   Serial.println();
 
   Serial.print("pmp"); Serial.print("\t");
-  Serial.print(pump_pwr[0],2); Serial.print("\t"); 
-  Serial.print(pump_pwr[1], 2); Serial.print("\t");
-  Serial.print(pump_pwr[2],2); Serial.print("\t"); 
-  Serial.print(pump_pwr[3], 2); Serial.print("\t");
+  for(float ppwr : pump_pwr) {Serial.print(ppwr, 2); Serial.print("\t");}
   Serial.println();
   
   //Serial.print("Zone: "); Serial.println(zone_id);
 
   Serial.print("int error"); Serial.print("\t"); 
-  Serial.print(error_i[0],2); Serial.print("\t");
-  Serial.print(error_i[1],2); Serial.print("\t");
-  Serial.print(error_i[2],2); Serial.print("\t");
-  Serial.print(error_i[3],2); Serial.print("\t");
+  for(double err : error_i) {Serial.print(err, 2); Serial.print("\t");}
   Serial.println();
 
   Serial.print("int"); Serial.print("\t");
-  Serial.print(int_pump[0], 2); Serial.print("\t");
-  Serial.print(int_pump[1], 2); Serial.print("\t");
-  Serial.print(int_pump[2], 2); Serial.print("\t");
-  Serial.print(int_pump[3], 2); Serial.print("\t");
+  for(float ip : int_pump) {Serial.print(ip, 2); Serial.print("\t");}
   Serial.println();
 
   Serial.print("prop"); Serial.print("\t");
-  Serial.print(p_pump[0], 2); Serial.print("\t");
-  Serial.print(p_pump[1], 2); Serial.print("\t");
-  Serial.print(p_pump[2], 2); Serial.print("\t");
-  Serial.print(p_pump[3], 2); Serial.print("\t");
+  for(float pp : p_pump) {Serial.print(pp, 2); Serial.print("\t");}
   Serial.println();
 
   Serial.print("u_PI"); Serial.print("\t");
-  Serial.print(u_PI[0], 2); Serial.print("\t");
-  Serial.print(u_PI[1], 2); Serial.print("\t");
-  Serial.print(u_PI[2], 2); Serial.print("\t");
-  Serial.print(u_PI[3], 2); Serial.print("\t");
+  for(float upi : u_PI) {Serial.print(upi, 2); Serial.print("\t");}
   Serial.println();
 }
 
+/*
 void send2ros()
 {
   for (int i = 0; i < 4; i++) {
@@ -283,8 +216,16 @@ void send2ros()
     if (i < 3) Serial.print(",");
   }
   Serial.println();
-}
+}*/
 
+
+void send2ros() {
+  float pkt[12];
+  memcpy(pkt + 0, dfr,       4 * sizeof(float));
+  memcpy(pkt + 4, flow_rate, 4 * sizeof(float));
+  memcpy(pkt + 8, pump_pwr,  4 * sizeof(float));
+  link.send(reinterpret_cast<uint8_t*>(pkt), sizeof(pkt));
+}
 
 void send2Matlab() {
   for (int i = 0; i < 4; i++) {
@@ -528,24 +469,8 @@ int getPumpPower_R(float valve3, float valve4, float q3_des, float q4_des) {
 */
 
 int getPumpPower_indiv(int nozzle, float q_des) {
-  switch (nozzle) {
-    case 1:
-      lookUpTableFlow = lookUpTableFlow1;
-      lookUpTablePwr = lookUpTablePwr1;
-      break;
-    case 2:
-      lookUpTableFlow = lookUpTableFlow2;
-      lookUpTablePwr = lookUpTablePwr2;
-      break;
-    case 3:
-      lookUpTableFlow = lookUpTableFlow3;
-      lookUpTablePwr = lookUpTablePwr3;
-      break;
-    case 4:
-      lookUpTableFlow = lookUpTableFlow4;
-      lookUpTablePwr = lookUpTablePwr4;
-      break;
-  }
+  lookUpTableFlow = lookUpTableFlowList[nozzle-1];
+  lookUpTablePwr = lookUpTablePwrList[nozzle-1];
   // 7 is size of look up tables
   for (int i = 0; i <= 7 - 1; i++) {
     if (q_des >= lookUpTableFlow[i]) {
@@ -556,11 +481,8 @@ int getPumpPower_indiv(int nozzle, float q_des) {
     }
   }
 
-  if (calc_u_base > 60)
-    calc_u_base = 60;
-  if (calc_u_base < 0)
-    calc_u_base = 0;
-
+  calc_u_base = constrain(calc_u_base, 0, 60);
+  
   return calc_u_base; 
 }
 
@@ -617,14 +539,8 @@ void updatePumpPower() {
     u_PI[2] = 0;      // pump is off in banked system
     u_PI[3] = computePIPump(3, dfr_R, flow_rate_right);
     
-    if (u_base[1] > 60)
-      u_base[1] = 60;
-    if (u_base[1] < 0)
-      u_base[1] = 0;
-    if (u_base[3] > 60)
-      u_base[3] = 60;
-    if (u_base[3] < 0)
-      u_base[3] = 0;
+    u_base[1] = constrain(u_base[1],0,60);
+    u_base[3] = constrain(u_base[3],0,60);
 
     pump_pwr[0] = 0;                        // not used
     pump_pwr[1] = u_base[1]; //+ u_PI[1];      // Pump 2 -> Nozzles 1&2
@@ -637,28 +553,15 @@ void updatePumpPower() {
       pump_pwr[3] = 0;
   }
   else {
-    kp_pump[0] = 0.07; 
-    kp_pump[1] = 0.07; 
-    kp_pump[2] = 0.07; 
-    kp_pump[3] = 0.07;
-
-    ki_pump[0] = 0.03;
-    ki_pump[1] = 0.03;
-    ki_pump[2] = 0.03;
-    ki_pump[3] = 0.03; 
+    for (float kpp : kp_pump) kpp = 0.07;
+    for (float kip : ki_pump) kip = 0.03;
 
     // Each nozzle has its own pump 
     for (int i = 0; i < 4; i++) {
       u_base[i] = getPumpPower_indiv(i, dfr[i]);
       u_PI[i] = computePIPump(i, dfr[i], flow_rate[i]); 
-
       pump_pwr[i] = u_base[i] + u_PI[i];
-
-      if (pump_pwr[i] > 60)
-        pump_pwr[i] = 60;
-      if (pump_pwr[i] < 0)
-        pump_pwr[i] = 0; 
-      
+      pump_pwr[i] = constrain(pump_pwr[i], 0, 60);      
       if (valve_pos[i] < 10 || dfr[i] == 0) {
         pump_pwr[i] = 0; 
       }
@@ -668,39 +571,16 @@ void updatePumpPower() {
 
 void setValveRatios_L(float q1_des, float q2_des) {
   float ratio;
-  float max_pos = 100.0;
-  float min_pos = 0.0;
-
-  if (q2_des != 0) {
-    ratio = q1_des / q2_des;
-  } else {
-    ratio = 1.0; // fallback to equal if denominator is 0
-  }
-
-  if (ratio > 1.0) {
-    // set valve1 all the way open & turn off valve1 PI control
-    valve_pos[0] = max_pos; 
-    kp_nozzle[0] = 0.0;
-    ki_nozzle[0] = 0.0;
-
-    // set valve2 position based on ratio & turn on valve2 PI control
-    valve_pos[1] = valve_pos[0] / ratio;    
-    kp_nozzle[1] = 0.001;
-    ki_nozzle[1] = 0.01;
-
-  } else {
-    // set valve2 all the way open & turn off valve2 PI control
-    valve_pos[1] = max_pos;
-    kp_nozzle[1] = 0.0;
-    ki_nozzle[1] = 0.0;
-
-    // set valve1 position based on ratio & turn on valve1 PI control 
-    valve_pos[0] = valve_pos[1] * ratio;
-    kp_nozzle[0] = 0.001;
-    ki_nozzle[0] = 0.01;
-    
-  }
-
+  constexpr float max_pos = 100.0;
+  constexpr float min_pos = 0.0;
+  ratio = q2_des != 0 ? q1_des/q2_des : 1.0;
+  const bool hi = (ratio > 1.0f); 
+  valve_pos[0] = hi ? max_pos : max_pos * ratio;
+  valve_pos[1] = hi ? max_pos / ratio : max_pos;
+  kp_nozzle[0] = hi ? 0.0 : 0.001;
+  kp_nozzle[1] = hi ? 0.001 : 0.0;
+  ki_nozzle[0] = hi ? 0.0 : 0.01;
+  ki_nozzle[1] = hi ? 0.01 : 0.0; 
   // Clamp both valves
   if (valve_pos[0] < min_pos) valve_pos[0] = min_pos;
   if (valve_pos[1] < min_pos) valve_pos[1] = min_pos;
@@ -708,42 +588,35 @@ void setValveRatios_L(float q1_des, float q2_des) {
 
 void setValveRatios_R(float q3_des, float q4_des) {
   float ratio;
-  float max_pos = 100.0;
-  float min_pos = 0.0;
-
-  if (q4_des != 0) {
-    ratio = q3_des / q4_des;
-  } else {
-    ratio = 1.0; // fallback to equal if denominator is 0
-  }
-
-  if (ratio > 1.0) {
-    // set valve3 all the way open & turn off valve3 PI control
-    valve_pos[2] = max_pos;
-    kp_nozzle[2] = 0.0;
-    ki_nozzle[2] = 0.0;
-
-    // set valve4 position based on ratio & turn on valve4 PI control
-    valve_pos[3] = valve_pos[2] / ratio;
-    kp_nozzle[3] = 0.008; 
-    ki_nozzle[3] = 0.01;
-
-  } else {
-    // set valve4 all the way open & turn off valve4 PI control
-    valve_pos[3] = max_pos;
-    kp_nozzle[3] = 0.0;
-    ki_nozzle[3] = 0.0;
-
-    // set valve3 position based on ratio & turn on valve4 PI control
-    valve_pos[2] = valve_pos[3] * ratio;
-    kp_nozzle[2] = 0.003;
-    ki_nozzle[2] = 0.01;
-    
-  }
-
+  constexpr float max_pos = 100.0;
+  constexpr float min_pos = 0.0;
+  ratio = q4_des != 0 ? q3_des/q4_des : 1.0;
+  const bool hi = (ratio > 1.0f); 
+  valve_pos[2] = hi ? max_pos : max_pos * ratio;
+  valve_pos[3] = hi ? max_pos / ratio : max_pos;
+  kp_nozzle[2] = hi ? 0.0 : 0.003;
+  kp_nozzle[3] = hi ? 0.008 : 0.0;
+  ki_nozzle[2] = hi ? 0.0 : 0.01;
+  ki_nozzle[3] = hi ? 0.01 : 0.0; 
   // Clamp both valves
   if (valve_pos[2] < min_pos) valve_pos[2] = min_pos;
   if (valve_pos[3] < min_pos) valve_pos[3] = min_pos;
+}
+
+volatile int16_t rx4[4];
+volatile bool rx_ready = false;
+
+static inline int16_t rd_i16_be(const uint8_t* b) {
+  return (int16_t)((uint16_t(b[0]) << 8) | uint16_t(b[1]));
+}
+
+static void onPacket(const uint8_t* buf, size_t len) {
+  if (len != 8) return;              // expecting 4 * 2 bytes
+  rx4[0] = rd_i16_be(buf + 0);
+  rx4[1] = rd_i16_be(buf + 2);
+  rx4[2] = rd_i16_be(buf + 4);
+  rx4[3] = rd_i16_be(buf + 6);
+  rx_ready = true;
 }
 
 void setup() {
@@ -751,6 +624,8 @@ void setup() {
   Serial1.begin(9600);    // flow sensor readings from arduino uno
   Serial2.begin(115200);  // roboteq for left bank
   Serial3.begin(115200);  // roboteq for right bank
+  link.setStream(&Serial);
+  link.setPacketHandler(onPacket);
   delay(100);
 
   cloopTime = millis();
@@ -769,20 +644,16 @@ void setup() {
   set_valve(3, 0);
   set_valve(4, 0);
 
-  for (int i = 0; i < 4; i++) {
-    u_PI[i] = 0;
-  }
+  for (float upi : u_PI) upi = 0.0;
 }
 
 int cal_pump_pwr(int r)
 {
   int x = r;
-  int a1 = 50; int a2 = 200;
-  int b1 = 21; int b2 = 62;
-
+  constexpr int a1 = 50, a2 = 200;
+  constexpr int b1 = 21, b2 = 62;
   float f1 = float(x-50)/float(a2-a1);
   float yy = b1 + (float(b2-b1))*f1;
-
   return int(yy);
 }
 
@@ -807,8 +678,8 @@ void loop() {
     //Serial.println("testing");
 
     //debug_disp();
-    //send2ros();
-    send2Matlab();
+    send2ros();
+    //send2Matlab();
   }
 /*
  for matlab logging, uncomment this and comment out the next if statement
@@ -821,7 +692,7 @@ void loop() {
     dfr_L = dfr[0] + dfr[1];
     dfr_R = dfr[2] + dfr[3];
   }*/
-
+  /*
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
     input.trim(); // remove any leading/trailing whitespace
@@ -842,7 +713,7 @@ void loop() {
     // Update combined flows
     dfr_L = dfr[0] + dfr[1];
     dfr_R = dfr[2] + dfr[3];
-  }
+  }*/
   /*
   // --- Zone ID Input ---
   if (Serial.available())
@@ -853,6 +724,15 @@ void loop() {
     //Serial.println(zone_id);
   }
   */
+  
+  if (rx_ready){
+    noInterrupts();
+    for (size_t i = 0; i < 4; i++) dfr[i] = rx4[i];
+    rx_ready = false;
+    interrupts();
+    dfr_L = dfr[0] + dfr[1];
+    dfr_R = dfr[2] + dfr[3];
+  } 
 
   // --- Zero Flow Case ---
   if (dfr_L == 0 && dfr_R == 0) {
