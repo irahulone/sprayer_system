@@ -469,8 +469,8 @@ int getPumpPower_R(float valve3, float valve4, float q3_des, float q4_des) {
 */
 
 int getPumpPower_indiv(int nozzle, float q_des) {
-  lookUpTableFlow = lookUpTableFlowList[nozzle-1];
-  lookUpTablePwr = lookUpTablePwrList[nozzle-1];
+  lookUpTableFlow = lookUpTableFlowList[nozzle];
+  lookUpTablePwr = lookUpTablePwrList[nozzle];
   // 7 is size of look up tables
   for (int i = 0; i <= 7 - 1; i++) {
     if (q_des >= lookUpTableFlow[i]) {
