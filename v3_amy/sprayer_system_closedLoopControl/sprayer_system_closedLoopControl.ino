@@ -553,8 +553,8 @@ void updatePumpPower() {
       pump_pwr[3] = 0;
   }
   else {
-    for (float kpp : kp_pump) kpp = 0.07;
-    for (float kip : ki_pump) kip = 0.03;
+    for (float& kpp : kp_pump) kpp = 0.07;
+    for (float& kip : ki_pump) kip = 0.03;
 
     // Each nozzle has its own pump 
     for (int i = 0; i < 4; i++) {
