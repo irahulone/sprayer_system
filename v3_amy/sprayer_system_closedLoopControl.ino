@@ -77,12 +77,6 @@ float nozzle_PI[4] = { 0.0, 0.0, 0.0, 0.0 };
 int zone_id = 0;
 long pulses[4] = { 0, 0, 0, 0 };
 
-const int window_size = 10;  // define the window size og: 400
-int flow_s0_ar[window_size];
-int flow_s1_ar[window_size];
-int flow_s2_ar[window_size];
-int flow_s3_ar[window_size];
-
 const int window_size_pump = 10; // og: 70
 int pump_1_ar[window_size_pump];
 
@@ -121,38 +115,7 @@ void set_valve(int valve, int voltage) {
   }
 }
 
-/*
-void ctrl_pump(int ch = 0, int val = 0) {
-  int min_val_pos = 20;
-  if (ch == 1) {
-    if (valve_pos[0] < min_val_pos && valve_pos[1] < min_val_pos)
-      val = 0;
-  }
-  if (ch == 2) {
-    if (valve_pos[2] < min_val_pos && valve_pos[3] < min_val_pos)
-      val = 0;
-  }
 
-  int max_per = 60;
-  if (val < 0) val = 0;
-  else if (val > max_per) val = max_per;
-  int v = map(val, 0, 100, 0, 1000);
-
-  // pump #2 is banked for nozzles 1&2
-  if (ch == 1) {
-    Serial2.print("!G 2 ");
-    Serial2.print(String(v));
-    Serial2.print("_\r");
-  }
-
-  // pump #4 is banked for nozzles 3&4
-  if (ch == 2) {
-    Serial3.print("!G 2 ");
-    Serial3.print(String(v));
-    Serial3.print("_\r");
-  }
-}
-*/
 void ctrl_pump(int ch = 0, int val = 0) {
   int min_val_pos = 20;
   int max_per = 60;
@@ -601,11 +564,11 @@ float computePIPump(int i, float dfr, float flow_rate) {
 
 void updatePumpPower() {
   if (isBanked) {
-    kp_pump[0] = 0.0;     kp_pump[1] = 0.1; 
-    kp_pump[2] = 0.0;     kp_pump[3] = 0.1;
+    kp_pump[0] = 0.0;     kp_pump[1] = 0.18; 
+    kp_pump[2] = 0.0;     kp_pump[3] = 0.18;
 
-    ki_pump[0] = 0.0;     ki_pump[1] = 0.05; 
-    ki_pump[2] = 0.0;     ki_pump[3] = 0.05; 
+    ki_pump[0] = 0.0;     ki_pump[1] = 0.1; 
+    ki_pump[2] = 0.0;     ki_pump[3] = 0.1; 
 
     u_base[0] = 0;    // pump is off in banked system
     u_base[1] = getPumpPower_L(valve_pos[0], valve_pos[1], dfr[0], dfr[1]);
@@ -633,6 +596,10 @@ void updatePumpPower() {
 
     if (pump_pwr[1] > 60)
       pump_pwr[1] = 60;
+    if (pump_pwr[3] > 60)
+      pump_pwr[3] = 60;
+    if (pump_pwr[1] < 0)
+      pump_pwr[1] = 0;
     if (pump_pwr[3] < 0)
       pump_pwr[3] = 0;
   }
@@ -642,6 +609,7 @@ void updatePumpPower() {
     kp_pump[2] = 0.07; 
     kp_pump[3] = 0.07;
 
+ 
     ki_pump[0] = 0.03;
     ki_pump[1] = 0.03;
     ki_pump[2] = 0.03;
@@ -649,7 +617,7 @@ void updatePumpPower() {
 
     // Each nozzle has its own pump 
     for (int i = 0; i < 4; i++) {
-      u_base[i] = getPumpPower_indiv(i, dfr[i]);
+      u_base[i] = getPumpPower_indiv(i+1, dfr[i]);
       u_PI[i] = computePIPump(i, dfr[i], flow_rate[i]); 
 
       pump_pwr[i] = u_base[i] + u_PI[i];
@@ -685,8 +653,8 @@ void setValveRatios_L(float q1_des, float q2_des) {
 
     // set valve2 position based on ratio & turn on valve2 PI control
     valve_pos[1] = valve_pos[0] / ratio;    
-    kp_nozzle[1] = 0.001;
-    ki_nozzle[1] = 0.01;
+    kp_nozzle[1] = 0.15;
+    ki_nozzle[1] = 0.1;
 
   } else {
     // set valve2 all the way open & turn off valve2 PI control
@@ -696,8 +664,8 @@ void setValveRatios_L(float q1_des, float q2_des) {
 
     // set valve1 position based on ratio & turn on valve1 PI control 
     valve_pos[0] = valve_pos[1] * ratio;
-    kp_nozzle[0] = 0.001;
-    ki_nozzle[0] = 0.01;
+    kp_nozzle[0] = 0.15;
+    ki_nozzle[0] = 0.1;
     
   }
 
@@ -725,8 +693,8 @@ void setValveRatios_R(float q3_des, float q4_des) {
 
     // set valve4 position based on ratio & turn on valve4 PI control
     valve_pos[3] = valve_pos[2] / ratio;
-    kp_nozzle[3] = 0.008; 
-    ki_nozzle[3] = 0.01;
+    kp_nozzle[3] = 0.12; 
+    ki_nozzle[3] = 0.07;
 
   } else {
     // set valve4 all the way open & turn off valve4 PI control
@@ -736,8 +704,8 @@ void setValveRatios_R(float q3_des, float q4_des) {
 
     // set valve3 position based on ratio & turn on valve4 PI control
     valve_pos[2] = valve_pos[3] * ratio;
-    kp_nozzle[2] = 0.003;
-    ki_nozzle[2] = 0.01;
+    kp_nozzle[2] = 0.12;
+    ki_nozzle[2] = 0.07;
     
   }
 
@@ -810,17 +778,6 @@ void loop() {
     //send2ros();
     send2Matlab();
   }
-/*
- for matlab logging, uncomment this and comment out the next if statement
-  if (Serial.available())
-  {
-    dfr[0] = Serial.parseInt();
-    dfr[1] = Serial.parseInt();
-    dfr[2] = Serial.parseInt();
-    dfr[3] = Serial.parseInt();
-    dfr_L = dfr[0] + dfr[1];
-    dfr_R = dfr[2] + dfr[3];
-  }*/
 
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
@@ -892,14 +849,14 @@ void loop() {
     valve_pos[i] += nozzle_PI[i]; // pi control
 
     if (valve_pos[i] > 100) valve_pos[i] = 100;
-    if (valve_pos[i] < 10) valve_pos[i] = 10; 
+    if (valve_pos[i] < 20) valve_pos[i] = 20; 
     
     if (dfr[i] == 0){
       valve_pos[i] -= 5;
       if (valve_pos[i] < 0) valve_pos[i] = 0;
     }
-    if(dfr[i] > 0 && valve_pos[i] < 10) {
-      valve_pos[i] = 10;
+    if(dfr[i] > 0 && valve_pos[i] < 20) {
+      valve_pos[i] = 20;
     }
   }
   }
