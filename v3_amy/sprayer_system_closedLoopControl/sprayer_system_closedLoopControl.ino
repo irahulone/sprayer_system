@@ -63,8 +63,8 @@ float int_pump[4] = { 0.0, 0.0, 0.0, 0.0 };             // pump integral term
 
 int eFlow_pump[4] = { 0, 0, 0, 0 };                     // flow rate error for pump control
 double error_i[4] = { 0, 0, 0, 0 };                     // integral error for pump control
-float kp_pump[4] = {0.0, 0.0, 0.0, 0.0};                // create pump proportional gain variable
-float ki_pump[4] = {0.0, 0.0, 0.0, 0.0};                // create pump integral gain variable
+float kp_pump[4] = {0.5, 0.7, 0.7, 0.7};                // create pump proportional gain variable
+float ki_pump[4] = {0.2, 0.3, 0.3, 0.3};                // create pump integral gain variable
 
 float calc_u_base = 0.0;                                // placeholder variable for calculated open loop pump power
 float u_base[4] = { 0.0, 0.0, 0.0, 0.0 };               // Pump Pwr calculated via Lookup Table
@@ -553,8 +553,8 @@ void updatePumpPower() {
       pump_pwr[3] = 0;
   }
   else {
-    for (float& kpp : kp_pump) kpp = 0.07;
-    for (float& kip : ki_pump) kip = 0.03;
+    //for (float& kpp : kp_pump) kpp = 0.07;
+    //for (float& kip : ki_pump) kip = 0.03;
 
     // Each nozzle has its own pump 
     for (int i = 0; i < 4; i++) {
