@@ -1,0 +1,25 @@
+{
+  "lat0": 37.26030078333333,
+  "lon0": -121.84412341666665,
+  "initial_bearing_deg": 2.0,
+
+  "pieces": [
+    { "type":"line", "id":"L1", "samples":12,
+      "start":{"ref":"prev"},
+      "target":{"ref":"prev","fwd_m":10, "frame":"local"}       
+    },
+    { "type":"line", "id":"L2", "samples":12,
+      "start":{"ref":"prev"},
+      "target":{"ref":"prev","fwd_m":10, "frame":"local"} 
+    },
+    { "type":"line", "id":"L3", "samples":12,
+      "start":{"ref":"prev"},
+      "target":{"ref":"prev","fwd_m":10, "frame":"local"}       
+    },
+    { "type":"line", "id":"L4", "samples":12,
+      "start":{"ref":"prev"},
+      "target":{"ref":"prev","fwd_m":10, "frame":"local"} 
+    }
+
+  ]
+}

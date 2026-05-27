@@ -1,0 +1,21 @@
+{
+  "lat0": 37.26027883333333,
+  "lon0": -121.84406733333,
+  "initial_bearing_deg": 270.0,
+
+  "pieces": [
+    { "type":"line", "id":"L1", "samples":12,
+      "start":{"ref":"prev"},
+      "target":{"ref":"prev","fwd_m":10, "frame":"local"}       
+    },
+    { "type":"arc", "id":"U1", "samples":48, "frame":"local",
+      "start":{"ref":"prev"},
+      "target":{"ref":"prev","right_m":1.0, "frame":"local"},   
+      "in_bearing_deg":0.0, "out_bearing_deg":180.0, "turn":"right"
+    },
+    { "type":"line", "id":"L2", "samples":12,
+      "start":{"ref":"prev"},
+      "target":{"ref":"prev","fwd_m":10, "frame":"local"} 
+    }
+  ]
+}

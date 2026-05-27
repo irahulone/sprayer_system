@@ -1,0 +1,5 @@
+ros2 run gps_nav dfr_pub --ros-args \
+  -p robot:=Kanda \
+  -p period_s:=10.0 \
+  -p publish_hz:=10.0 \
+  -p order:="0,1,2,3"
