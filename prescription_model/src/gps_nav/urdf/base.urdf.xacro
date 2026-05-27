@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<robot name="rover" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="mesh_enabled" default="true"/>
+  <xacro:arg name="robot_namespace" default="/"/>
+
+  <!-- Optional named material for the box fallback -->
+  <material name="Blue">
+    <color rgba="0.1 0.4 0.9 1.0"/>
+  </material>
+
+  <link name="rover_link">
+    <inertial>
+      <origin xyz="-0.108 0 -0.02579" rpy="0 0 0"/>
+      <mass value="3.978"/>
+      <inertia ixx="0.021858680" ixy="0.0" ixz="0.010020353"
+               iyy="0.078572349" iyz="0.0" izz="0.091971324"/>
+    </inertial>
+
+    <visual>
+      <xacro:if value="$(arg mesh_enabled)">
+        <origin xyz="0 0 0" rpy="1.57 3.14 1.57"/>
+        <geometry>
+
+
+          <mesh filename="file:///home/zen/RSL_Projects/RSL_gps/install/gps_nav/share/gps_nav/meshes/rover_base.dae"/>
+          <!--<mesh filename="package://gps_nav/meshes/rover_base.dae" scale="1 1 1"/>-->
+        </geometry>
+      </xacro:if>
+      <xacro:unless value="$(arg mesh_enabled)">
+        <origin xyz="-0.125 0 -0.01" rpy="0 0 0"/>
+        <geometry><box size="0.25 0.25 0.02"/></geometry>
+        <material name="Blue"/>
+      </xacro:unless>
+    </visual>
+
+    <collision>
+      <origin xyz="-0.125 0 -0.01" rpy="0 0 0"/>
+      <geometry><box size="0.25 0.25 0.02"/></geometry>
+    </collision>
+  </link>
+
+  <link name="base_link"/>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="rover_link"/>
+    <origin xyz="0 0 0.09188" rpy="0 0 $(eval pi/2)"/>
+  </joint>
+
+  <!-- Gazebo tags are fine; robot_state_publisher ignores them -->
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <robotNamespace>$(arg robot_namespace)</robotNamespace>
+      <legacyModeNS>true</legacyModeNS>
+    </plugin>
+  </gazebo>
+</robot>
